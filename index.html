@@ -62,17 +62,18 @@
   footer.tabbar{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--border);}
   .tabbar button{flex:1;background:none;border:none;color:var(--muted);padding:10px 0;font-size:.68rem;cursor:pointer;}
   .tabbar button.active{color:var(--accent);font-weight:700;}
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:flex-end;justify-content:center;}
-  .modal-overlay.open{display:flex;}
-  .modal-card{background:var(--card);border:1px solid var(--border);border-top-left-radius:18px;border-top-right-radius:18px;width:100%;max-width:640px;max-height:80vh;overflow-y:auto;padding:20px 18px 30px;}
-  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;}
-  .modal-head b{font-size:1.05rem;line-height:1.3;}
-  .closeBtn{background:var(--card2);border:1px solid var(--border);color:var(--text);width:30px;height:30px;border-radius:50%;flex:0 0 auto;font-size:.9rem;cursor:pointer;}
-  .modal-body{margin-top:14px;font-size:.85rem;line-height:1.5;}
-  .modal-body .label{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;margin-top:14px;margin-bottom:4px;}
-  .modal-body a{color:var(--accent2);word-break:break-all;}
-  .logentry.clickable{cursor:pointer;}
-  .logentry.clickable:active{opacity:.7;}
+  .pilarRow{margin-bottom:12px;}
+  .pilarRow .pilarLabel{display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:4px;}
+  .pilarRow .pilarLabel b{color:var(--text);}
+  .pilarRow .pilarLabel span{color:var(--muted);}
+  .pilarbar{height:10px;border-radius:6px;background:var(--card2);overflow:hidden;position:relative;}
+  .pilarbar .fill{height:100%;transition:width .3s;}
+  .pilarbar.valor .fill{background:linear-gradient(90deg,#ff7a1a,#ffb35c);}
+  .pilarbar.marca .fill{background:linear-gradient(90deg,#3ddc84,#7cf0ae);}
+  .pilarbar.algoritmo .fill{background:linear-gradient(90deg,#5c9bff,#8fc0ff);}
+  .monthpill{display:inline-block;background:var(--card2);border:1px solid var(--border);color:var(--accent2);font-size:.72rem;padding:3px 10px;border-radius:20px;margin-bottom:8px;}
+  .okmsg{font-size:.72rem;color:var(--ok);margin-top:8px;}
+  .warnmsg{font-size:.72rem;color:var(--mid);margin-top:8px;}
 </style>
 </head>
 <body>
@@ -94,6 +95,13 @@
       </div>
       <div class="bar"><div id="goalBar" style="width:0%"></div></div>
       <p style="font-size:.72rem;color:var(--muted);margin-top:6px;">Meta mínima: 1 contenido publicado por semana, durante 26 semanas.</p>
+    </div>
+
+    <div class="card">
+      <h2>Mezcla de pilares del mes</h2>
+      <span class="monthpill" id="dashMonthLabel"></span>
+      <div id="dashPilares"></div>
+      <button class="btn secondary" onclick="showView('contenido')" style="margin-top:4px;">Ver detalle →</button>
     </div>
 
     <div class="card">
@@ -120,12 +128,19 @@
 
   <!-- CONTENIDO -->
   <div class="view" id="view-contenido">
+
+    <div class="card">
+      <h2>Meta mensual: 65% / 20% / 15%</h2>
+      <span class="monthpill" id="monthLabel"></span>
+      <p style="font-size:.75rem;color:var(--muted);margin-top:0;">Cada mes se reinicia. La meta es que la mezcla real de tu contenido se acerque a esta proporción — no es "publicar algo de cada uno", es respetar el peso de cada pilar.</p>
+      <div id="pilarProgress"></div>
+      <div id="pilarMsg"></div>
+    </div>
+
     <div class="card">
       <h2>Registrar contenido de la semana</h2>
       <label>Fecha</label>
       <input type="date" id="logDate">
-      <label>Título / tema del video</label>
-      <input type="text" id="logTitulo" placeholder="Ej: Cómo elegir la pintura correcta">
       <label>Pilar</label>
       <select id="logPilar">
         <option value="valor">Pilar 1 · Valor/Educación (65%)</option>
@@ -139,12 +154,6 @@
       <label>Liga (opcional)</label>
       <input type="text" id="logLink" placeholder="https://...">
       <button class="btn" onclick="addLog()">Guardar</button>
-    </div>
-
-    <div class="card">
-      <h2>Vista previa</h2>
-      <p style="font-size:.72rem;color:var(--muted);margin-top:-6px;margin-bottom:8px;">Así se va a ver este registro cuando lo toques después.</p>
-      <div id="livePreview"></div>
     </div>
 
     <div class="card">
@@ -196,17 +205,6 @@
 
 </main>
 
-<div class="modal-overlay" id="logModal" onclick="if(event.target===this) closeLogModal()">
-  <div class="modal-card">
-    <div class="modal-head">
-      <b id="modalTitulo"></b>
-      <button class="closeBtn" onclick="closeLogModal()">✕</button>
-    </div>
-    <div id="modalTags"></div>
-    <div class="modal-body" id="modalBody"></div>
-  </div>
-</div>
-
 <footer class="tabbar">
   <button class="active" data-tab="dashboard" onclick="showView('dashboard')">Inicio</button>
   <button data-tab="niveles" onclick="showView('niveles')">Niveles</button>
@@ -237,6 +235,12 @@ const LEVELS = [
     libro:{t:"Built to Sell", a:"John Warrillow", nota:"Construir algo que valga sin depender de ti."}}
 ];
 
+const PILARES = [
+  {key:"valor", label:"Pilar 1 · Valor/Educación", meta:65, cls:"valor"},
+  {key:"marca", label:"Pilar 2 · Marca Personal", meta:20, cls:"marca"},
+  {key:"algoritmo", label:"Pilar 3 · Impulso Algoritmo", meta:15, cls:"algoritmo"}
+];
+
 const DAY = 24*60*60*1000;
 function load(){ try{return JSON.parse(localStorage.getItem('modoCreadorData'))||{}; }catch(e){return {};} }
 function save(d){ localStorage.setItem('modoCreadorData', JSON.stringify(d)); }
@@ -246,7 +250,6 @@ if(!data.currentLevel) data.currentLevel = 1;
 if(!data.checklist) data.checklist = {};
 if(!data.logs) data.logs = [];
 if(!data.reflections) data.reflections = {};
-data.logs.forEach(l=>{ if(!l.titulo) l.titulo = l.formato || 'Contenido sin título'; });
 save(data);
 
 function isoWeek(dateStr){
@@ -258,6 +261,13 @@ function isoWeek(dateStr){
   const diff = (target - firstThursday)/DAY;
   const week = 1 + Math.round((diff - ((firstThursday.getDay()+6)%7))/7);
   return target.getFullYear()+"-W"+String(week).padStart(2,'0');
+}
+
+function monthKey(dateStr){ return dateStr.slice(0,7); } // YYYY-MM
+function monthLabelText(key){
+  const [y,m] = key.split('-');
+  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  return meses[parseInt(m,10)-1] + " " + y;
 }
 
 function showView(name){
@@ -320,85 +330,38 @@ function renderBooks(){
     </div>`).join('');
 }
 
-function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
 function addLog(){
   const date = document.getElementById('logDate').value || new Date().toISOString().slice(0,10);
-  const titulo = document.getElementById('logTitulo').value.trim();
   const pilar = document.getElementById('logPilar').value;
   const formato = document.getElementById('logFormato').value.trim();
   const notas = document.getElementById('logNotas').value.trim();
   const link = document.getElementById('logLink').value.trim();
-  if(!titulo){ alert('Ponle un título o tema al video — así lo vas a reconocer después'); return; }
-  data.logs.unshift({id:Date.now(), date, titulo, pilar, formato, notas, link});
+  if(!formato){ alert('Pon al menos el formato del contenido'); return; }
+  data.logs.unshift({id:Date.now(), date, pilar, formato, notas, link});
   save(data);
-  document.getElementById('logTitulo').value='';
   document.getElementById('logFormato').value='';
   document.getElementById('logNotas').value='';
   document.getElementById('logLink').value='';
   renderAll();
-  renderLivePreview();
 }
 
 function pilarLabel(p){ return p==='valor'?'Valor 65%':p==='marca'?'Marca Personal 20%':'Algoritmo 15%'; }
 
-function toggleLog(id){
-  const l = data.logs.find(x=>x.id===id);
-  if(!l) return;
-  document.getElementById('modalTitulo').textContent = l.titulo || l.formato || '(sin título)';
-  document.getElementById('modalTags').innerHTML = `<span class="tag">${pilarLabel(l.pilar)}</span>${l.formato?` <span class="tag">${esc(l.formato)}</span>`:''} <span class="tag">${l.date}</span>`;
-  document.getElementById('modalBody').innerHTML = `
-    <div class="label">Notas / gancho usado</div>
-    <div>${l.notas?esc(l.notas).replace(/\n/g,'<br>'):'<span style="color:var(--muted);">No guardaste notas para este contenido.</span>'}</div>
-    ${l.link?`<div class="label">Liga</div><a href="${esc(l.link)}" target="_blank">${esc(l.link)}</a>`:''}
-  `;
-  document.getElementById('logModal').classList.add('open');
-}
-function closeLogModal(){ document.getElementById('logModal').classList.remove('open'); }
-
-function logCard(l){
-  const titulo = l.titulo || l.formato || '(sin título)';
-  return `
-    <div class="logentry clickable" onclick="toggleLog(${l.id})">
-      <b>${esc(titulo)}</b> <span class="tag">${pilarLabel(l.pilar)}</span>${l.formato?` <span class="tag">${esc(l.formato)}</span>`:''}
-      <small>${l.date} · toca para ver detalle →</small>
-    </div>`;
-}
-
 function renderLogs(){
   const list = document.getElementById('logList');
   if(data.logs.length===0){ list.innerHTML = '<p style="font-size:.8rem;color:var(--muted);">Aún no hay contenido registrado.</p>'; return; }
-  list.innerHTML = data.logs.map(l=>logCard(l)).join('');
+  list.innerHTML = data.logs.map(l=>`
+    <div class="logentry">
+      <b>${l.formato}</b> <span class="tag">${pilarLabel(l.pilar)}</span>
+      <small>${l.date}${l.link?' · '+l.link:''}</small>
+      ${l.notas?`<div style="margin-top:4px;">${l.notas}</div>`:''}
+    </div>`).join('');
 }
 
 function renderDashLastLogs(){
   const el = document.getElementById('dashLastLogs');
   if(data.logs.length===0){ el.innerHTML = '<p style="font-size:.8rem;color:var(--muted);">Todavía no registras contenido. ¡Arranca esta semana!</p>'; return; }
-  el.innerHTML = data.logs.slice(0,3).map(l=>logCard(l)).join('') + `<p style="font-size:.72rem;color:var(--muted);margin-top:6px;">Toca un contenido para ver sus notas.</p>`;
-}
-
-function renderLivePreview(){
-  const el = document.getElementById('livePreview');
-  if(!el) return;
-  const titulo = document.getElementById('logTitulo').value.trim();
-  const pilar = document.getElementById('logPilar').value;
-  const formato = document.getElementById('logFormato').value.trim();
-  const notas = document.getElementById('logNotas').value.trim();
-  const link = document.getElementById('logLink').value.trim();
-  const date = document.getElementById('logDate').value || new Date().toISOString().slice(0,10);
-  if(!titulo && !formato && !notas && !link){
-    el.innerHTML = '<p style="font-size:.78rem;color:var(--muted);">Empieza a escribir arriba y aquí va apareciendo tu registro.</p>';
-    return;
-  }
-  el.innerHTML = `
-    <div class="logentry" style="pointer-events:none;">
-      <b>${esc(titulo)||'<span style="color:var(--muted);">(sin título)</span>'}</b>
-      <span class="tag">${pilarLabel(pilar)}</span>${formato?` <span class="tag">${esc(formato)}</span>`:''}
-      <small>${date}</small>
-      <div class="label" style="margin-top:10px;">Notas / gancho usado</div>
-      <div>${notas?esc(notas).replace(/\n/g,'<br>'):'<span style="color:var(--muted);">Sin notas todavía.</span>'}</div>
-      ${link?`<div class="label">Liga</div><a href="${esc(link)}" target="_blank">${esc(link)}</a>`:''}
-    </div>`;
+  el.innerHTML = data.logs.slice(0,3).map(l=>`<div class="logentry"><b>${l.formato}</b> <span class="tag">${pilarLabel(l.pilar)}</span><small>${l.date}</small></div>`).join('');
 }
 
 function renderDashLevel(){
@@ -426,28 +389,18 @@ function weekProgress(){
   return weeks;
 }
 
-function streakCount(weeks){
-  let streak = 0;
-  for(let i=weeks.length-1;i>=0;i--){
-    if(!weeks[i].isNow && new Date() < new Date(data.startDate)) break;
-    if(weeks[i].wk > isoWeek(new Date().toISOString().slice(0,10))) continue;
-    if(weeks[i].done) streak++;
-    else if(weeks[i].wk <= isoWeek(new Date().toISOString().slice(0,10))) break;
-  }
-  return streak;
-}
-
 function renderDashboard(){
   const weeks = weekProgress();
   const doneCount = weeks.filter(w=>w.done).length;
   document.getElementById('statWeeks').textContent = doneCount+"/26";
   document.getElementById('goalBar').style.width = Math.min(100,(doneCount/26)*100)+"%";
-  let streak = 0;
   const relevant = weeks.filter(w=> w.wk <= isoWeek(new Date().toISOString().slice(0,10)));
+  let streak = 0;
   for(let i=relevant.length-1;i>=0;i--){ if(relevant[i].done) streak++; else break; }
   document.getElementById('statStreak').textContent = streak;
   renderDashLevel();
   renderDashLastLogs();
+  renderPilarBlock('dashPilares', 'dashMonthLabel', false);
 }
 
 function renderWeekGrid(){
@@ -470,6 +423,59 @@ function renderReflection(){
   document.getElementById('ref2').value = data.reflections.q2 || '';
 }
 
+// --- Mezcla de pilares del mes (meta 65/20/15) ---
+function currentMonthLogs(){
+  const key = monthKey(new Date().toISOString().slice(0,10));
+  return data.logs.filter(l => monthKey(l.date) === key);
+}
+
+function renderPilarBlock(containerId, labelId, withMsg){
+  const monthLogsAll = currentMonthLogs();
+  const total = monthLogsAll.length;
+  const key = monthKey(new Date().toISOString().slice(0,10));
+  const labelEl = document.getElementById(labelId);
+  if(labelEl) labelEl.textContent = monthLabelText(key) + (total? " · "+total+" publicad"+(total===1?"o":"os") : " · sin contenido aún");
+
+  const counts = {valor:0, marca:0, algoritmo:0};
+  monthLogsAll.forEach(l=>{ if(counts[l.pilar]!==undefined) counts[l.pilar]++; });
+
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML = PILARES.map(p=>{
+    const pct = total>0 ? Math.round((counts[p.key]/total)*100) : 0;
+    const diff = pct - p.meta;
+    const diffTxt = total===0 ? '' : (diff>=0 ? `+${diff}pts` : `${diff}pts`);
+    const fillWidth = Math.min(100, pct);
+    return `
+      <div class="pilarRow">
+        <div class="pilarLabel"><b>${p.label}</b><span>${counts[p.key]} pub · ${pct}% (meta ${p.meta}%) ${diffTxt}</span></div>
+        <div class="pilarbar ${p.cls}"><div class="fill" style="width:${fillWidth}%"></div></div>
+      </div>`;
+  }).join('');
+
+  if(withMsg){
+    const msgEl = document.getElementById('pilarMsg');
+    if(!msgEl) return;
+    if(total===0){
+      msgEl.innerHTML = `<p class="warnmsg">Aún no registras contenido este mes — arranca para empezar a medir tu mezcla.</p>`;
+      return;
+    }
+    // check how far off each pilar is
+    const offs = PILARES.map(p=>{
+      const pct = Math.round((counts[p.key]/total)*100);
+      return {p, diff: pct - p.meta};
+    });
+    const worst = offs.reduce((a,b)=> Math.abs(b.diff)>Math.abs(a.diff)? b : a);
+    if(Math.abs(worst.diff) <= 5){
+      msgEl.innerHTML = `<p class="okmsg">Vas bien alineado con la mezcla 65/20/15 este mes ✓</p>`;
+    } else if(worst.diff > 0){
+      msgEl.innerHTML = `<p class="warnmsg">Te estás pasando en ${worst.p.label} (${worst.diff>0?'+':''}${worst.diff}pts sobre su meta). Balancea con los otros pilares antes de que cierre el mes.</p>`;
+    } else {
+      msgEl.innerHTML = `<p class="warnmsg">Te falta contenido de ${worst.p.label} (${worst.diff}pts bajo su meta) para llegar al 100% de la mezcla este mes.</p>`;
+    }
+  }
+}
+
 function renderAll(){
   renderDashboard();
   renderLevels();
@@ -477,16 +483,11 @@ function renderAll(){
   renderWeekGrid();
   renderReflection();
   renderBooks();
+  renderPilarBlock('pilarProgress', 'monthLabel', true);
 }
 
 document.getElementById('logDate').value = new Date().toISOString().slice(0,10);
-['logTitulo','logPilar','logFormato','logNotas','logLink','logDate'].forEach(id=>{
-  const field = document.getElementById(id);
-  field.addEventListener('input', renderLivePreview);
-  field.addEventListener('change', renderLivePreview);
-});
 renderAll();
-renderLivePreview();
 </script>
 
 </body>
